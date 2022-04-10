@@ -23,6 +23,8 @@ import org.quartz.spi.ThreadExecutor;
  *
  * @author matt.accola
  * @version $Revision$ $Date$
+ *
+ * 无线程池相关线程池化的能力，execute方法就是将线程直接start启动
  */
 public class DefaultThreadExecutor implements ThreadExecutor {
 
