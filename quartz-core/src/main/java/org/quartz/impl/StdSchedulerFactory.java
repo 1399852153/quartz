@@ -71,7 +71,7 @@ import java.util.Properties;
 
 /**
  * <p>
- * An implementation of <code>{@link org.quartz.SchedulerFactory}</code> that
+ * An implementation of <code>{@link SchedulerFactory}</code> that
  * does all of its work of creating a <code>QuartzScheduler</code> instance
  * based on the contents of a <code>Properties</code> file.
  * </p>
@@ -97,8 +97,8 @@ import java.util.Properties;
  * </p>
  *
  * <p>
- * Instances of the specified <code>{@link org.quartz.spi.JobStore}</code>,
- * <code>{@link org.quartz.spi.ThreadPool}</code>, and other SPI classes will be created
+ * Instances of the specified <code>{@link JobStore}</code>,
+ * <code>{@link ThreadPool}</code>, and other SPI classes will be created
  * by name, and then any additional properties specified for them in the config
  * file will be set on the instance by calling an equivalent 'set' method. For
  * example if the properties file contains the property
@@ -352,7 +352,7 @@ public class StdSchedulerFactory implements SchedulerFactory {
 
     /**
      * <p>
-     * Initialize the <code>{@link org.quartz.SchedulerFactory}</code> with
+     * Initialize the <code>{@link SchedulerFactory}</code> with
      * the contents of a <code>Properties</code> file and overriding System
      * properties.
      * </p>
@@ -371,9 +371,16 @@ public class StdSchedulerFactory implements SchedulerFactory {
      * command-line when running the JVM) override any properties in the
      * loaded file.  For this reason, you may want to use a different initialize()
      * method if your application security policy prohibits access to
-     * <code>{@link java.lang.System#getProperties()}</code>.
+     * <code>{@link System#getProperties()}</code>.
      * </p>
      */
+
+    /**
+     * 1 从配置文件和系统变量中生成配置
+     * 2 默认的配置文件位于当前目录下的quartz.properties配置文件中
+     *   如果你希望使用其它的默认配置文件，你可以定义系统变量'org.quartz.properties'指向你想要指定的文件
+     * 3 系统变量包OS的环境变量和-D指定的JVM运行参数会覆盖配置文件中的配置.
+     * */
     public void initialize() throws SchedulerException {
         // short-circuit if already initialized
         if (cfg != null) {
@@ -470,7 +477,9 @@ public class StdSchedulerFactory implements SchedulerFactory {
             }
         }
 
-        initialize(overrideWithSysProps(props, getLog()));
+        // 将系统配置填充进配置中（系统变量配置覆盖properties文件中的配置）
+        Properties properties = overrideWithSysProps(props, getLog());
+        initialize(properties);
     }
 
     /**
@@ -512,7 +521,7 @@ public class StdSchedulerFactory implements SchedulerFactory {
 
     /**
      * <p>
-     * Initialize the <code>{@link org.quartz.SchedulerFactory}</code> with
+     * Initialize the <code>{@link SchedulerFactory}</code> with
      * the contents of the <code>Properties</code> file with the given
      * name.
      * </p>
@@ -556,7 +565,7 @@ public class StdSchedulerFactory implements SchedulerFactory {
 
     /**
      * <p>
-     * Initialize the <code>{@link org.quartz.SchedulerFactory}</code> with
+     * Initialize the <code>{@link SchedulerFactory}</code> with
      * the contents of the <code>Properties</code> file opened with the
      * given <code>InputStream</code>.
      * </p>
@@ -594,7 +603,7 @@ public class StdSchedulerFactory implements SchedulerFactory {
 
     /**
      * <p>
-     * Initialize the <code>{@link org.quartz.SchedulerFactory}</code> with
+     * Initialize the <code>{@link SchedulerFactory}</code> with
      * the contents of the given <code>Properties</code> object.
      * </p>
      */
@@ -606,8 +615,12 @@ public class StdSchedulerFactory implements SchedulerFactory {
         this.cfg = new PropertiesParser(props);
     }
 
+    /**
+     * 初始化Scheduler调度器
+     * */
     private Scheduler instantiate() throws SchedulerException {
         if (cfg == null) {
+            // 配置为初始化，初始化配置
             initialize();
         }
 
@@ -723,7 +736,7 @@ public class StdSchedulerFactory implements SchedulerFactory {
         // If Proxying to remote scheduler, short-circuit here...
         // ~~~~~~~~~~~~~~~~~~
         if (rmiProxy) {
-
+            // 远程调度器
             if (autoId) {
                 schedInstId = DEFAULT_INSTANCE_ID;
             }
@@ -754,6 +767,7 @@ public class StdSchedulerFactory implements SchedulerFactory {
         // If Proxying to remote JMX scheduler, short-circuit here...
         // ~~~~~~~~~~~~~~~~~~
         if (jmxProxy) {
+            // jmx远程调度器
             if (autoId) {
                 schedInstId = DEFAULT_INSTANCE_ID;
             }
@@ -793,7 +807,8 @@ public class StdSchedulerFactory implements SchedulerFactory {
             return jmxScheduler;
         }
 
-        
+
+        // jobFactory初始化
         JobFactory jobFactory = null;
         if(jobFactoryClass != null) {
             try {
@@ -815,6 +830,7 @@ public class StdSchedulerFactory implements SchedulerFactory {
             }
         }
 
+        // 实例id生成器初始化
         InstanceIdGenerator instanceIdGenerator = null;
         if(instanceIdGeneratorClass != null) {
             try {
@@ -1454,13 +1470,13 @@ public class StdSchedulerFactory implements SchedulerFactory {
         PropertyDescriptor[] propDescs = bi.getPropertyDescriptors();
         PropertiesParser pp = new PropertiesParser(props);
 
-        java.util.Enumeration<Object> keys = props.keys();
+        Enumeration<Object> keys = props.keys();
         while (keys.hasMoreElements()) {
             String name = (String) keys.nextElement();
             String c = name.substring(0, 1).toUpperCase(Locale.US);
             String methName = "set" + c + name.substring(1);
 
-            java.lang.reflect.Method setMeth = getSetMethod(methName, propDescs);
+            Method setMeth = getSetMethod(methName, propDescs);
 
             try {
                 if (setMeth == null) {
@@ -1508,10 +1524,10 @@ public class StdSchedulerFactory implements SchedulerFactory {
         }
     }
 
-    private java.lang.reflect.Method getSetMethod(String name,
+    private Method getSetMethod(String name,
             PropertyDescriptor[] props) {
         for (int i = 0; i < props.length; i++) {
-            java.lang.reflect.Method wMeth = props[i].getWriteMethod();
+            Method wMeth = props[i].getWriteMethod();
 
             if (wMeth != null && wMeth.getName().equals(name)) {
                 return wMeth;
@@ -1561,9 +1577,11 @@ public class StdSchedulerFactory implements SchedulerFactory {
      */
     public Scheduler getScheduler() throws SchedulerException {
         if (cfg == null) {
+            // 初始化配置cfg
             initialize();
         }
 
+        // SchedulerRepository底层是一个hashMap
         SchedulerRepository schedRep = SchedulerRepository.getInstance();
 
         Scheduler sched = schedRep.lookup(getSchedulerName());
@@ -1576,6 +1594,7 @@ public class StdSchedulerFactory implements SchedulerFactory {
             }
         }
 
+        // 缓存中不存在或者已经被shutdown关闭了,初始化一个新的调度器
         sched = instantiate();
 
         return sched;
