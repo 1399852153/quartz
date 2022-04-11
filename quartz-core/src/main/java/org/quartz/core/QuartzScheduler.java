@@ -212,6 +212,7 @@ public class QuartzScheduler implements RemotableQuartzScheduler {
             addInternalJobListener((JobListener)resources.getJobStore());
         }
 
+        // 创建quartz核心调度器线程
         this.schedThread = new QuartzSchedulerThread(this, resources);
         ThreadExecutor schedThreadExecutor = resources.getThreadExecutor();
         schedThreadExecutor.execute(this.schedThread);
@@ -542,6 +543,7 @@ public class QuartzScheduler implements RemotableQuartzScheduler {
             resources.getJobStore().schedulerResumed();
         }
 
+        // 启动调度线程
         schedThread.togglePause(false);
 
         getLog().info(

@@ -77,6 +77,7 @@ public interface ThreadPool {
      * <p>The implementation of this method should block until there is at
      * least one available thread.</p>
      *
+     * 只有当线程池中至少存在一个可用的工作线程时，方法才会返回；否则会block阻塞直到存在可用的工作线程
      * @return the number of currently available threads
      */
     int blockForAvailableThreads();

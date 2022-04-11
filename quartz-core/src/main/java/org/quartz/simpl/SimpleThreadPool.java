@@ -235,8 +235,10 @@ public class SimpleThreadPool implements ThreadPool {
 
     public void initialize() throws SchedulerConfigException {
 
-        if(workers != null && workers.size() > 0) // already initialized...
+        if(workers != null && workers.size() > 0) {
+            // 工作线程集合workers不为空，说明线程池已经被初始化了，不处理直接返回
             return;
+        }
         
         if (count <= 0) {
             throw new SchedulerConfigException(

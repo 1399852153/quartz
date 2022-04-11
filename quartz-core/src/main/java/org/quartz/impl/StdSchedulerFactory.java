@@ -1249,11 +1249,9 @@ public class StdSchedulerFactory implements SchedulerFactory {
 
 
         // Fire everything up
-        // 点燃一起，意思是前期的配置准备工作完成后，启动一个可以正常工作的scheduler需要的一切
+        // 启动一切，前期的配置准备工作完成后，启动一个正常工作的scheduler
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         try {
-                
-    
             JobRunShellFactory jobRunShellFactory = null; // Create correct run-shell factory...
     
             if (userTXLocation != null) {

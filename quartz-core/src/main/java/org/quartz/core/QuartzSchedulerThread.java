@@ -120,6 +120,7 @@ public class QuartzSchedulerThread extends Thread {
         // start the underlying thread, but put this object into the 'paused'
         // state
         // so processing doesn't start yet...
+        // paused=true,代表线程应该被暂停，主循环会一直休眠
         paused = true;
         halted = new AtomicBoolean(false);
     }
@@ -244,11 +245,14 @@ public class QuartzSchedulerThread extends Thread {
     public void run() {
         int acquiresFailed = 0;
 
+        // 如果未停止则无限循环（main loop）
         while (!halted.get()) {
             try {
                 // check if we're supposed to pause...
                 synchronized (sigLock) {
                     while (paused && !halted.get()) {
+                        // 初始化时，paused=true，通过while循环中的wait等待于此，不进行实际的调度
+                        // scheduler启动时，会通过togglePause(false)操作讲paused设置为空，此时便会跳出当前wait循环，执行实际的调度
                         try {
                             // wait until togglePause(false) is called...
                             sigLock.wait(1000L);
@@ -261,20 +265,25 @@ public class QuartzSchedulerThread extends Thread {
                     }
 
                     if (halted.get()) {
+                        // 如果线程被终止，直接跳出最外层main loop
                         break;
                     }
                 }
 
                 // wait a bit, if reading from job store is consistently
                 // failing (e.g. DB is down or restarting)..
+                // 如果读取jobStore一直有异常（失败数大于等于2），则通过sleep方法休眠一小会
                 if (acquiresFailed > 1) {
                     try {
                         long delay = computeDelayForRepeatedErrors(qsRsrcs.getJobStore(), acquiresFailed);
+                        // 休眠时间由具体的jobStore控制（20ms <= delay <= 10min）
                         Thread.sleep(delay);
                     } catch (Exception ignore) {
+                        // 忽略sleep产生的异常
                     }
                 }
 
+                // 获得当前线程池中的可用工作线程数（只有存在至少一个可用的工作线程时，该方法才会返回。否则将会block住）
                 int availThreadCount = qsRsrcs.getThreadPool().blockForAvailableThreads();
                 if(availThreadCount > 0) { // will always be true, due to semantics of blockForAvailableThreads...
 
@@ -284,6 +293,10 @@ public class QuartzSchedulerThread extends Thread {
 
                     clearSignaledSchedulingChange();
                     try {
+                        // 获得下一次需要触发的trigger集合
+                        // 1 noLaterThan（不晚于该时间触发的时间戳）
+                        // 2 返回的最大值（当前可用线程数 + 配置的最大批次数的最小值决定）
+                        // 3 时间窗口
                         triggers = qsRsrcs.getJobStore().acquireNextTriggers(
                                 now + idleWaitTime, Math.min(availThreadCount, qsRsrcs.getMaxBatchSize()), qsRsrcs.getBatchTimeWindow());
                         acquiresFailed = 0;
@@ -456,10 +469,13 @@ public class QuartzSchedulerThread extends Thread {
 
 
         // sanity check per getAcquireRetryDelay specification
-        if (delay < MIN_DELAY)
+        // 控制delay休眠时间的上下限
+        if (delay < MIN_DELAY) {
             delay = MIN_DELAY;
-        if (delay > MAX_DELAY)
+        }
+        if (delay > MAX_DELAY) {
             delay = MAX_DELAY;
+        }
 
         return delay;
     }

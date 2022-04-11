@@ -1452,22 +1452,26 @@ public class RAMJobStore implements JobStore {
             long batchEnd = noLaterThan;
             
             // return empty list if store has no triggers.
-            if (timeTriggers.size() == 0)
+            if (timeTriggers.size() == 0) {
+                // 未保存任何一个trigger，直接返回空集合
                 return result;
+            }
             
             while (true) {
                 TriggerWrapper tw;
 
                 try {
                     tw = timeTriggers.first();
-                    if (tw == null)
+                    if (tw == null) {
                         break;
+                    }
                     timeTriggers.remove(tw);
                 } catch (java.util.NoSuchElementException nsee) {
                     break;
                 }
 
                 if (tw.trigger.getNextFireTime() == null) {
+                    // 未指定下一次触发时间的trigger直接跳过
                     continue;
                 }
 
